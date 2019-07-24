@@ -1,18 +1,20 @@
-## Start development environment
+### Start development server
 
 	docker-compose up -d
 
 * Point browser to http://localhost:8000
-* Make changes in plugin directory.
+* Make changes in the `plugin` directory. It is mapped to the `wp-content/plugins/g4-wp-auth` directory in WordPress.
 
-## Stop development environment
+### Stop development server
 
 	docker-compose down
 
-## SSH into development server
+### SSH into development server
 
-	docker ps   # to get container process id
-	docker exec -it <process id> bash
+	# to get container process id
+	docker ps
+	# substitute <pid> with container process id
+	docker exec -it <pid> bash
 
 ### Install error logging plugin (in SSH session)
 

@@ -8,10 +8,16 @@
 
 function g4_auth($user, $username, $password) {
 	error_log('g4_auth: username='.$username.' password='.$password);
-	if ($username == '' || $password == '') return;
+
+	$admin = strtolower(trim(get_option('local_admin')));
+	if ($username == '' || $password == '' || strtolower($username) == $admin) return;
+	$admin = trim(get_option('local_admin'));
 	$tenant = trim(get_option('tenant_name'));
 	$endpoint = get_service_endpoint();
-	if ($tenant == '' || get_service_endpoint() == '') return;
+	if ($tenant == '' || get_service_endpoint() == '') {
+		remove_action('authenticate', 'wp_authenticate_username_password', 20);
+		return new WP_Error('denied', __("ERROR: G4 Authentication plugin is not properly configured"));
+	}
 
 	$request = [
 		'method' => 'POST',
@@ -28,11 +34,16 @@ function g4_auth($user, $username, $password) {
 	];
 	$result = wp_remote_post($endpoint.'/authentication', $request);
 	if (is_wp_error($result)) {
-		//remove_action('authenticate', 'wp_authenticate_username_password', 20);
+		remove_action('authenticate', 'wp_authenticate_username_password', 20);
 		return new WP_Error('denied', __("ERROR: Failed to connect to G4 Authentication Service"));
 	}
 
 	$auth = json_decode($result['body'], true);
+	if ($auth['error'] != null) {
+		remove_action('authenticate', 'wp_authenticate_username_password', 20);
+		return new WP_Error('denied', __("G4 ERROR: ").$auth['error']);
+	}
+
 	if ($auth['accessAllowed'] == 0) {
 		$user = new WP_Error('denied', __("ERROR: Invalid username or password"));
 	} else {
@@ -54,7 +65,7 @@ function g4_auth($user, $username, $password) {
 		$user = new WP_User($new_user_id);
 	}
 
-	//remove_action('authenticate', 'wp_authenticate_username_password', 20);
+	remove_action('authenticate', 'wp_authenticate_username_password', 20);
 	return $user;
 }
 
@@ -95,6 +106,14 @@ function g4_plugin_settings_page() {
 		<?php settings_fields('g4-plugin-settings-group'); ?>
 		<?php do_settings_sections('g4-plugin-settings-group'); ?>
 		<table class="form-table">
+			<tr valign="top">
+				<th scope="row">WordPress Admin Username</th>
+				<td>
+					<input type="text" name="local_admin"
+						value="<?php echo esc_attr(get_option('local_admin')); ?>"
+						class="regular-text" />
+				</td>
+			</tr>
 			<tr valign="top">
 				<th scope="row">G4 Service URL</th>
 				<td>
