@@ -2,11 +2,12 @@
 /**
 * Plugin Name: G4 Authentication Plugin
 * Description: Authenticate users using G4 credentials.
-* Version: 0.0.1
+* Version: 0.1.0
 * Author: Ferruccio Barletta
 **/
 
 function g4_auth($user, $username, $password) {
+	error_log('g4_auth: username='.$username.' password='.$password);
 	if ($username == '' || $password == '') return;
 	$tenant = trim(get_option('tenant_name'));
 	$endpoint = get_service_endpoint();
@@ -26,7 +27,10 @@ function g4_auth($user, $username, $password) {
 		'data_format' => 'body'
 	];
 	$result = wp_remote_post($endpoint.'/authentication', $request);
-	if (is_wp_error($result)) return;
+	if (is_wp_error($result)) {
+		//remove_action('authenticate', 'wp_authenticate_username_password', 20);
+		return new WP_Error('denied', __("ERROR: Failed to connect to G4 Authentication Service"));
+	}
 
 	$auth = json_decode($result['body'], true);
 	if ($auth['accessAllowed'] == 0) {
@@ -74,6 +78,7 @@ function g4_plugin_create_menu() {
 function register_g4_plugin_settings() {
 	register_setting('g4-plugin-settings-group', 'service_endpoint');
 	register_setting('g4-plugin-settings-group', 'tenant_name');
+	register_setting('g4-plugin-settings-group', 'local_admin');
 }
 
 function get_service_endpoint() {
@@ -90,7 +95,7 @@ function g4_plugin_settings_page() {
 		<?php settings_fields('g4-plugin-settings-group'); ?>
 		<?php do_settings_sections('g4-plugin-settings-group'); ?>
 		<table class="form-table">
-		<tr valign="top">
+			<tr valign="top">
 				<th scope="row">G4 Service URL</th>
 				<td>
 					<input type="url" name="service_endpoint"

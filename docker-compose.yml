@@ -27,6 +27,7 @@ services:
        WORDPRESS_DEBUG: 1
      working_dir: /var/www/html
      volumes:
+       - ./xfer:/var/www/xfer
        - ./plugin:/var/www/html/wp-content/plugins/g4-wp-auth
 volumes:
     db_data: {}
