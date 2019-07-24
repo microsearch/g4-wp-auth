@@ -9,13 +9,13 @@
 
 	docker-compose down
 
-### SSH into development server
+### Run a shell inside the container
 
 	# to get container process id
 	docker ps
 	# substitute <pid> with container process id
 	docker exec -it <pid> bash
 
-### Install error logging plugin (in SSH session)
+### Install WordPress error logging plugin inside a container shell
 
 	/var/www/xfer/update.sh
