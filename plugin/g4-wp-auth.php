@@ -188,6 +188,13 @@ function g4_plugin_settings_page() {
 		</table>
 		<?php submit_button(); ?>
 
+		<?php if (isset($_GET['settings-updated'])) { ?>
+			<div id="message" class="notice notice-success is-dismissible">
+				<p><strong><?php _e('Settings saved.') ?></strong></p>
+			</div>
+		<?php } ?>
+
+
 	</form>
 	</div>
 <?php
