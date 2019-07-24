@@ -7,8 +7,6 @@
 **/
 
 function g4_auth($user, $username, $password) {
-	error_log('g4_auth: username='.$username.' password='.$password);
-
 	$admin = strtolower(trim(get_option('local_admin')));
 	if ($username == '' || $password == '' || strtolower($username) == $admin) return;
 	$admin = trim(get_option('local_admin'));
@@ -112,6 +110,19 @@ function g4_plugin_settings_page() {
 					<input type="text" name="local_admin"
 						value="<?php echo esc_attr(get_option('local_admin')); ?>"
 						class="regular-text" />
+					<p class="description">
+						<b>Optional</b>, but highly recommended.
+					</p>
+					<p class="description">
+						When the G4 Authentican plugin is activated, users with
+						WordPress accounts (including the administrator) will no
+						longer be able to login.
+					</p>
+					<p class="description">
+						Entering the username of the WordPress administrator here
+						will allow that user to authenticate locally,
+						bypassing G4 authentication.
+					</p>
 				</td>
 			</tr>
 			<tr valign="top">
@@ -120,6 +131,14 @@ function g4_plugin_settings_page() {
 					<input type="url" name="service_endpoint"
 						value="<?php echo esc_attr(get_service_endpoint()); ?>"
 						class="regular-text code" />
+					<p class="description"><b>Required.</b>
+					G4 Authentication will fail without this.
+					</p>
+					<p class="description">
+						The URL of the G4 API.
+						This should be set to <b>https://g4-dev.v1.mrcapi.net</b>
+						while G4 is still in development.
+					</p>
 				</td>
 			</tr>
 			<tr valign="top">
@@ -128,7 +147,43 @@ function g4_plugin_settings_page() {
 					<input type="text" name="tenant_name"
 						value="<?php echo esc_attr(get_option('tenant_name')); ?>"
 						class="regular-text" />
+					<p class="description"><b>Required.</b>
+					G4 Authentication will fail without this.
+					</p>
+					<p class="description">
+					The G4 tenant whose users should have access to this site.
+					</p>
 				</td>
+			</tr>
+			<tr valign="top">
+			<th scope="row">Notes</th>
+			<td>
+				<p class="description">
+					The data flow is strictly one way.
+				</p>
+				<p class="description">
+					When a user is authenticated, the local user record is updated
+					with that user's information or	a new user record is created if necessary.
+				</p>
+				<p class="description">
+					We do this because a lot of WordPress functionality depends on having
+					user records in its database.
+				</p>
+				<p class="description">
+					Also, if there is a problem with G4 Authentication,
+					you can deactivate the plugin and users will still be able to
+					authenticate using up-to-date credentials.
+				</p>
+				<p class="description">
+					However, if a user changes their password on the WordPress site,
+					that change will not get pushed back to G4 and
+					the user will still have to use their old password.
+				</p>
+				<p class="description">
+					Password changes have to be made in G4. This is the case even when the
+					plugin is active.
+				</p>
+			</td>
 			</tr>
 		</table>
 		<?php submit_button(); ?>
