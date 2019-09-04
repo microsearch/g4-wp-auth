@@ -6,6 +6,11 @@
 * Author: Ferruccio Barletta
 **/
 
+// Uncomment the following code to debug this plugin.
+// ini_set("log_errors", 1);
+// ini_set("display_errors", 0);
+// ini_set("error_log", "/tmp/php-error.log");
+
 function g4_auth($user, $username, $password) {
 	$admin = strtolower(trim(get_option('local_admin')));
 	if ($username == '' || $password == '' || strtolower($username) == $admin) return;
@@ -72,7 +77,7 @@ add_filter('authenticate', 'g4_auth', 10, 3);
 function split_name($name) {
     $name = trim($name);
     $last_name = (strpos($name, ' ') === false) ? '' : preg_replace('#.*\s([\w-]*)$#', '$1', $name);
-    $first_name = trim( preg_replace('#'.$last_name.'#', '', $name ) );
+    $first_name = trim(preg_replace('#'.$last_name.'#', '', $name));
     return array($first_name, $last_name);
 }
 
