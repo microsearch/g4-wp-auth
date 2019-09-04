@@ -37,7 +37,7 @@ function g4_auth($user, $username, $password) {
 	}
 
 	$auth = json_decode($result['body'], true);
-	if ($auth['error'] != null) {
+	if (isset($auth['error']) && $auth['error'] != null) {
 		remove_action('authenticate', 'wp_authenticate_username_password', 20);
 		return new WP_Error('denied', __("G4 ERROR: ").$auth['error']);
 	}
