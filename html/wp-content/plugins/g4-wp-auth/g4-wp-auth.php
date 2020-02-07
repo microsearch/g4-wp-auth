@@ -2,7 +2,7 @@
 /**
 * Plugin Name: G4 Authentication Plugin
 * Description: Authenticate users using G4 credentials.
-* Version: 0.1.0
+* Version: 0.2.0
 * Author: Ferruccio Barletta
 **/
 
