@@ -35,7 +35,7 @@ function g4_auth($user, $username, $password) {
 		]),
 		'data_format' => 'body'
 	];
-	$result = wp_remote_post($endpoint.'/authentication', $request);
+	$result = wp_remote_post($endpoint.'/auth', $request);
 	if (is_wp_error($result)) {
 		remove_action('authenticate', 'wp_authenticate_username_password', 20);
 		return new WP_Error('denied', __("ERROR: Failed to connect to G4 Authentication Service"));
