@@ -6,11 +6,6 @@
 * Author: Ferruccio Barletta
 **/
 
-// Uncomment the following code to debug this plugin.
-// ini_set("log_errors", 1);
-// ini_set("display_errors", 0);
-// ini_set("error_log", "/tmp/php-error.log");
-
 function g4_auth($user, $username, $password) {
 	$admin = strtolower(trim(get_option('local_admin')));
 	if ($username == '' || $password == '' || strtolower($username) == $admin) return;
@@ -22,20 +17,7 @@ function g4_auth($user, $username, $password) {
 		return new WP_Error('denied', __("ERROR: G4 Authentication plugin is not properly configured"));
 	}
 
-	$request = [
-		'method' => 'POST',
-		'blocking' => true,
-		'headers' => [
-			'content-type' => 'application/json',
-			'x-g4-tenant' => $tenant,
-		],
-		'body' => json_encode([
-			'username' => $username,
-			'password' => $password
-		]),
-		'data_format' => 'body'
-	];
-	$result = wp_remote_post($endpoint.'/auth', $request);
+	$result = request_auth($username, $password);
 	if (is_wp_error($result)) {
 		remove_action('authenticate', 'wp_authenticate_username_password', 20);
 		return new WP_Error('denied', __("ERROR: Failed to connect to G4 Authentication Service"));
@@ -50,6 +32,8 @@ function g4_auth($user, $username, $password) {
 	if ($auth['accessAllowed'] == 0) {
 		$user = new WP_Error('denied', __("ERROR: Invalid username or password"));
 	} else {
+		$userinfo = get_userinfo($auth);
+		$role = add_user_role($userinfo);
 		$userobj = new WP_User();
 		$user = $userobj->get_data_by('login', $auth['username']);
 		$name = split_name($auth['fullname']);
@@ -60,7 +44,8 @@ function g4_auth($user, $username, $password) {
 			'user_email' => $auth['email'],
 			'display_name' => $auth['fullname'],
 			'first_name' => $name[0],
-			'last_name' => $name[1]
+			'last_name' => $name[1],
+			'role' => $role
 		];
 		if ($user != null && $user->ID != 0)
 			$userdata['ID'] = $user->ID;
@@ -73,6 +58,56 @@ function g4_auth($user, $username, $password) {
 }
 
 add_filter('authenticate', 'g4_auth', 10, 3);
+
+function request_auth($username, $password) {
+	$tenant = trim(get_option('tenant_name'));
+	$request = [
+		'method' => 'POST',
+		'blocking' => true,
+		'headers' => [
+			'content-type' => 'application/json',
+			'x-g4-tenant' => $tenant,
+		],
+		'body' => json_encode([
+			'username' => $username,
+			'password' => $password
+		]),
+		'data_format' => 'body'
+	];
+	return wp_remote_post(get_service_endpoint().'/auth', $request);
+}
+
+function get_userinfo($auth) {
+	$tenant = trim(get_option('tenant_name'));
+	$g4_userid = $auth['userId'];
+	$request = [
+		'method' => 'GET',
+		'blocking' => true,
+		'headers' => [
+			'content-type' => 'application/json',
+			'x-g4-tenant' => $tenant,
+			'authorization' => 'Bearer '.$auth['bearer']
+		]
+	];
+	$response = wp_remote_get(get_service_endpoint().'/user/'.$g4_userid, $request);
+	return json_decode($response['body'], true);
+}
+
+function add_user_role($userinfo) {
+	$rolenames = $userinfo['roleNames'];
+	$role = 'Member';
+	foreach ($rolenames as $name) {
+		if (substr($name, 0, 9) === 'position:') {
+			$role = substr($name, 9);
+			break;
+		} else if (substr($name, 0, 8) === 'g4admin:') {
+			$role = 'MicroSearch Administrator';
+			break;
+		}
+	}
+	add_role($role, $role);
+	return $role;
+}
 
 function split_name($name) {
     $name = trim($name);
