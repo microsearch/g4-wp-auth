@@ -28,8 +28,6 @@ services:
      working_dir: /var/www/html
      volumes:
        - ./html:/var/www/html
-      #  - ./plugin:/var/www/plugin
-      #  - ./plugin:/var/www/html/wp-content/plugins/g4-wp-auth
 
 volumes:
     db_data: {}

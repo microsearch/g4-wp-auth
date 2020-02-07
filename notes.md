@@ -1,13 +1,15 @@
 ### Start development server
 
-	docker-compose up -d
+	make up
 
 * Point browser to http://localhost:8000
-* Make changes in the `plugin` directory. It is mapped to the `wp-content/plugins/g4-wp-auth` directory in WordPress.
+* Make changes in the `html/wp-content/plugins/g4-wp-auth` directory.
 
 ### Stop development server
 
-	docker-compose down
+	make down
+
+Use `make clear` to delete wordpress database as well.
 
 ### Run a shell inside the container
 
