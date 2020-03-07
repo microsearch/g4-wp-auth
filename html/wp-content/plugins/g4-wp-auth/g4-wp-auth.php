@@ -2,7 +2,7 @@
 /**
 * Plugin Name: G4 Authentication Plugin
 * Description: Authenticate users using G4 credentials.
-* Version: 0.2.0
+* Version: 1.0.0
 * Author: Ferruccio Barletta
 **/
 
@@ -67,6 +67,7 @@ function request_auth($username, $password) {
 		'headers' => [
 			'content-type' => 'application/json',
 			'x-g4-tenant' => $tenant,
+			'x-g4-application' => 'wp-auth'
 		],
 		'body' => json_encode([
 			'username' => $username,
@@ -86,6 +87,7 @@ function get_userinfo($auth) {
 		'headers' => [
 			'content-type' => 'application/json',
 			'x-g4-tenant' => $tenant,
+			'x-g4-application' => 'wp-auth',
 			'authorization' => 'Bearer '.$auth['bearer']
 		]
 	];
@@ -132,7 +134,7 @@ function register_g4_plugin_settings() {
 
 function get_service_endpoint() {
 	$endpoint = trim(get_option('service_endpoint'));
-	return $endpoint ==  '' ? 'https://g4-dev.v1.mrcapi.net' : $endpoint;
+	return $endpoint ==  '' ? 'https://g4-prod.v1.mrcapi.net' : $endpoint;
 }
 
 function g4_plugin_settings_page() {
@@ -176,8 +178,7 @@ function g4_plugin_settings_page() {
 					</p>
 					<p class="description">
 						The URL of the G4 API.
-						This should be set to <b>https://g4-dev.v1.mrcapi.net</b>
-						while G4 is still in development.
+						This should be normally set to <b>https://g4-prod.v1.mrcapi.net</b>.
 					</p>
 				</td>
 			</tr>
