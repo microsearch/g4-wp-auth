@@ -7,11 +7,12 @@
 **/
 
 function g4_auth($user, $username, $password) {
-	$admin = strtolower(trim(get_option('local_admin')));
-	if ($username == '' || $password == '' || strtolower($username) == $admin) return;
-	$admin = trim(get_option('local_admin'));
-	$tenant = trim(get_option('tenant_name'));
+	$admin = normalize(get_option('local_admin'));
+	if ($username == '' || $password == '' || normalize($username) == $admin) return;
+	$admin = normalize(get_option('local_admin'));
+	$tenant = normalize(get_option('tenant_name'));
 	$endpoint = get_service_endpoint();
+	$g4admins = array_map('normalize', explode(",", get_option('g4_admins')));
 	if ($tenant == '' || get_service_endpoint() == '') {
 		remove_action('authenticate', 'wp_authenticate_username_password', 20);
 		return new WP_Error('denied', __("ERROR: G4 Authentication plugin is not properly configured"));
@@ -33,7 +34,12 @@ function g4_auth($user, $username, $password) {
 		$user = new WP_Error('denied', __("ERROR: Invalid username or password"));
 	} else {
 		$userinfo = get_userinfo($auth);
-		$role = add_user_role($userinfo);
+		if (in_array($auth['username'], $g4admins)) {
+			$role = "Administrator";
+			add_role($role, $role);
+		} else {
+			$role = add_user_role($userinfo);
+		}
 		$userobj = new WP_User();
 		$user = $userobj->get_data_by('login', $auth['username']);
 		$name = split_name($auth['fullname']);
@@ -59,8 +65,12 @@ function g4_auth($user, $username, $password) {
 
 add_filter('authenticate', 'g4_auth', 10, 3);
 
+function normalize($name) {
+	return strtolower(trim($name));
+}
+
 function request_auth($username, $password) {
-	$tenant = trim(get_option('tenant_name'));
+	$tenant = normalize(get_option('tenant_name'));
 	$request = [
 		'method' => 'POST',
 		'blocking' => true,
@@ -79,7 +89,7 @@ function request_auth($username, $password) {
 }
 
 function get_userinfo($auth) {
-	$tenant = trim(get_option('tenant_name'));
+	$tenant = normalize(get_option('tenant_name'));
 	$g4_userid = $auth['userId'];
 	$request = [
 		'method' => 'GET',
@@ -130,10 +140,11 @@ function register_g4_plugin_settings() {
 	register_setting('g4-plugin-settings-group', 'service_endpoint');
 	register_setting('g4-plugin-settings-group', 'tenant_name');
 	register_setting('g4-plugin-settings-group', 'local_admin');
+	register_setting('g4-plugin-settings-group', 'g4_admins');
 }
 
 function get_service_endpoint() {
-	$endpoint = trim(get_option('service_endpoint'));
+	$endpoint = normalize(get_option('service_endpoint'));
 	return $endpoint ==  '' ? 'https://g4-prod.v1.mrcapi.net' : $endpoint;
 }
 
@@ -193,6 +204,18 @@ function g4_plugin_settings_page() {
 					</p>
 					<p class="description">
 					The G4 tenant whose users should have access to this site.
+					</p>
+				</td>
+			</tr>
+			<tr valign="top">
+				<th scope="row">G4 Administrators</th>
+				<td>
+					<input type="text" name="g4_admins"
+						value="<?php echo esc_attr(get_option('g4_admins')); ?>"
+						class="regular-text" />
+					<p class="description"><b>Optional.</b></p>
+					<p class="description">
+					Comma-separated list of G4 users who will be given WordPress <b>Administrator</b> access.
 					</p>
 				</td>
 			</tr>
