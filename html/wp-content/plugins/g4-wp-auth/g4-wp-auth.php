@@ -35,8 +35,7 @@ function g4_auth($user, $username, $password) {
 	} else {
 		$userinfo = get_userinfo($auth);
 		if (in_array($auth['username'], $g4admins)) {
-			$role = "Administrator";
-			add_role($role, $role);
+			$role = "administrator";
 		} else {
 			$role = add_user_role($userinfo);
 		}
@@ -117,7 +116,7 @@ function add_user_role($userinfo) {
 			break;
 		}
 	}
-	add_role($role, $role);
+	add_role($role);
 	return $role;
 }
 
