@@ -116,7 +116,7 @@ function add_user_role($userinfo) {
 			break;
 		}
 	}
-	add_role($role);
+	add_role($role, $role);
 	return $role;
 }
 
