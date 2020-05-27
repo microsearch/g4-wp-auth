@@ -82,8 +82,7 @@ function request_auth($username, $password) {
 			'username' => $username,
 			'password' => $password,
 			'detail'=> [
-				'remote-addr' => $_SERVER['REMOTE_ADDR'],
-				'forwarded-for' => $_SERVER['HTTP_X_FORWARDED_FOR']
+				'remote-addr' => $_SERVER['REMOTE_ADDR']
 			]
 		]),
 		'data_format' => 'body'
