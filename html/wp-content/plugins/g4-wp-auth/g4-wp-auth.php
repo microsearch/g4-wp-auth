@@ -2,7 +2,7 @@
 /**
 * Plugin Name: G4 Authentication Plugin
 * Description: Authenticate users using G4 credentials.
-* Version: 1.1.2
+* Version: 1.1.3
 * Author: Ferruccio Barletta
 **/
 
@@ -80,7 +80,11 @@ function request_auth($username, $password) {
 		],
 		'body' => json_encode([
 			'username' => $username,
-			'password' => $password
+			'password' => $password,
+			'detail'=> [
+				'remote-addr' => $_SERVER['REMOTE_ADDR'],
+				'forwarded-for' => $_SERVER['HTTP_X_FORWARDED_FOR']
+			]
 		]),
 		'data_format' => 'body'
 	];
