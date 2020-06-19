@@ -110,11 +110,16 @@ function get_userinfo($auth) {
 function add_user_role($userinfo) {
 	$rolenames = $userinfo['roleNames'];
 	$role = 'Member';
+	$roles_scope = normalize(get_option('roles_scope'));
 	foreach ($rolenames as $name) {
-		if (substr($name, 0, 9) === 'position:') {
-			$role = substr($name, 9);
-			break;
-		} else if (substr($name, 0, 8) === 'g4admin:') {
+		$len = strlen($roles_scope);
+		if ($len > 0) {
+			if (substr($name, 0, $len + 1) === $roles_scope . ":") {
+				$role = substr($name, $len + 1);
+				break;
+			}
+		}
+		if (substr($name, 0, 8) === 'g4admin:') {
 			$role = 'MicroSearch Administrator';
 			break;
 		}
@@ -143,6 +148,7 @@ function register_g4_plugin_settings() {
 	register_setting('g4-plugin-settings-group', 'tenant_name');
 	register_setting('g4-plugin-settings-group', 'local_admin');
 	register_setting('g4-plugin-settings-group', 'g4_admins');
+	register_setting('g4-plugin-settings-group', 'roles_scope');
 }
 
 function get_service_endpoint() {
@@ -218,6 +224,18 @@ function g4_plugin_settings_page() {
 					<p class="description"><b>Optional.</b></p>
 					<p class="description">
 					Comma-separated list of G4 users who will be given WordPress <b>Administrator</b> access.
+					</p>
+				</td>
+			</tr>
+			<tr valign="top">
+			<th scope="row">Map G4 Roles</th>
+				<td>
+					<input type="text" name="roles_scope"
+						value="<?php echo esc_attr(get_option('roles_scope')); ?>"
+						class="regular-text" />
+					<p class="description"><b>Optional.</b></p>
+					<p class="description">
+					Map G4 roles in this scope to WordPress roles.
 					</p>
 				</td>
 			</tr>
