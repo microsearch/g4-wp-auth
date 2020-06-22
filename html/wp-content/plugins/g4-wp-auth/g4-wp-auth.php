@@ -6,6 +6,8 @@
 * Author: Ferruccio Barletta
 **/
 
+include 'g4-plugin-settings.php';
+
 function g4_auth($user, $username, $password) {
 	$admin = normalize(get_option('local_admin'));
 	if ($username == '' || $password == '' || normalize($username) == $admin) return;
@@ -33,12 +35,6 @@ function g4_auth($user, $username, $password) {
 	if ($auth['accessAllowed'] == 0) {
 		$user = new WP_Error('denied', __("ERROR: Invalid username or password"));
 	} else {
-		$userinfo = get_userinfo($auth);
-		if (in_array($auth['username'], $g4admins)) {
-			$role = "administrator";
-		} else {
-			$role = add_user_role($userinfo);
-		}
 		$userobj = new WP_User();
 		$user = $userobj->get_data_by('login', $auth['username']);
 		$name = split_name($auth['fullname']);
@@ -49,13 +45,14 @@ function g4_auth($user, $username, $password) {
 			'user_email' => $auth['email'],
 			'display_name' => $auth['fullname'],
 			'first_name' => $name[0],
-			'last_name' => $name[1],
-			'role' => $role
+			'last_name' => $name[1]
 		];
 		if ($user != null && $user->ID != 0)
 			$userdata['ID'] = $user->ID;
 		$new_user_id = wp_insert_user($userdata);
 		$user = new WP_User($new_user_id);
+		$role = (in_array($auth['username'], $g4admins)) ? 'administrator' : 'subscriber';
+		set_user_roles($role, $user, $auth);
 	}
 
 	remove_action('authenticate', 'wp_authenticate_username_password', 20);
@@ -90,42 +87,57 @@ function request_auth($username, $password) {
 	return wp_remote_post(get_service_endpoint().'/auth', $request);
 }
 
-function get_userinfo($auth) {
-	$tenant = normalize(get_option('tenant_name'));
-	$g4_userid = $auth['userId'];
-	$request = [
-		'method' => 'GET',
-		'blocking' => true,
-		'headers' => [
-			'content-type' => 'application/json',
-			'x-g4-tenant' => $tenant,
-			'x-g4-application' => 'wp-auth',
-			'authorization' => 'Bearer '.$auth['bearer']
-		]
-	];
-	$response = wp_remote_get(get_service_endpoint().'/user/'.$g4_userid, $request);
-	return json_decode($response['body'], true);
+function new_role($displayname) {
+	$name = str_replace(' ', '-', normalize($displayname));
+	add_role($name, $displayname);
+	return $name;
 }
 
-function add_user_role($userinfo) {
-	$rolenames = $userinfo['roleNames'];
-	$role = 'Member';
-	$roles_scope = normalize(get_option('roles_scope'));
+function set_user_roles($role, $user, $auth) {
+	$rolenames = $auth['roles'];
 	foreach ($rolenames as $name) {
-		$len = strlen($roles_scope);
-		if ($len > 0) {
-			if (substr($name, 0, $len + 1) === $roles_scope . ":") {
-				$role = substr($name, $len + 1);
-				break;
-			}
-		}
 		if (substr($name, 0, 8) === 'g4admin:') {
-			$role = 'MicroSearch Administrator';
-			break;
+			$user->set_role('administrator');
+			$user->add_role(new_role('MicroSearch Administrator'));
+			return;
 		}
 	}
-	add_role($role, $role);
-	return $role;
+
+	$user->set_role($role);
+	switch (create_wp_roles()) {
+		default:
+		case 'none':
+			return;
+		case 'role_scope':
+			$roles_scope = normalize(get_option('roles_scope'));
+			$role_count = 0;
+			foreach ($rolenames as $scoped_name) {
+				$len = strlen($roles_scope);
+				if ($len > 0) {
+					if (substr($scoped_name, 0, $len + 1) === $roles_scope . ":") {
+						$name = substr($scoped_name, $len + 1);
+						$user->add_role(new_role($name));
+						++$role_count;
+					}
+				}
+			}
+			if ($role_count === 0 && default_wp_role() !== '') {
+				$user->add_role(default_wp_role());
+			}
+			return;
+		case 'profile':
+			$profilenames = $auth['profiles'];
+			$role_count = 0;
+			foreach ($profilenames as $name) {
+				$user->add_role(new_role($name));
+				++$role_count;
+			}
+			if ($role_count === 0 && default_wp_role() !== '') {
+				$user->add_role(default_wp_role());
+			}
+			return;
+	}
+
 }
 
 function split_name($name) {
@@ -141,147 +153,6 @@ function g4_plugin_create_menu() {
 	add_menu_page('G4 Authentication', 'Authentication', 'administrator',
 		__FILE__, 'g4_plugin_settings_page');
 	add_action('admin_init', 'register_g4_plugin_settings');
-}
-
-function register_g4_plugin_settings() {
-	register_setting('g4-plugin-settings-group', 'service_endpoint');
-	register_setting('g4-plugin-settings-group', 'tenant_name');
-	register_setting('g4-plugin-settings-group', 'local_admin');
-	register_setting('g4-plugin-settings-group', 'g4_admins');
-	register_setting('g4-plugin-settings-group', 'roles_scope');
-}
-
-function get_service_endpoint() {
-	$endpoint = normalize(get_option('service_endpoint'));
-	return $endpoint ==  '' ? 'https://g4-prod.v1.mrcapi.net' : $endpoint;
-}
-
-function g4_plugin_settings_page() {
-?>
-	<div class="wrap">
-	<h1>G4 Authentication Settings</h1>
-
-	<form method="post" action="options.php">
-		<?php settings_fields('g4-plugin-settings-group'); ?>
-		<?php do_settings_sections('g4-plugin-settings-group'); ?>
-		<table class="form-table">
-			<tr valign="top">
-				<th scope="row">WordPress Admin Username</th>
-				<td>
-					<input type="text" name="local_admin"
-						value="<?php echo esc_attr(get_option('local_admin')); ?>"
-						class="regular-text" />
-					<p class="description">
-						<b>Optional</b>, but highly recommended.
-					</p>
-					<p class="description">
-						When the G4 Authentican plugin is activated, users with
-						WordPress accounts (including the administrator) will no
-						longer be able to login.
-					</p>
-					<p class="description">
-						Entering the username of the WordPress administrator here
-						will allow that user to authenticate locally,
-						bypassing G4 authentication.
-					</p>
-				</td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">G4 Service URL</th>
-				<td>
-					<input type="url" name="service_endpoint"
-						value="<?php echo esc_attr(get_service_endpoint()); ?>"
-						class="regular-text code" />
-					<p class="description"><b>Required.</b>
-					G4 Authentication will fail without this.
-					</p>
-					<p class="description">
-						The URL of the G4 API.
-						This should be normally set to <b>https://g4-prod.v1.mrcapi.net</b>.
-					</p>
-				</td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">Tenant Name</th>
-				<td>
-					<input type="text" name="tenant_name"
-						value="<?php echo esc_attr(get_option('tenant_name')); ?>"
-						class="regular-text" />
-					<p class="description"><b>Required.</b>
-					G4 Authentication will fail without this.
-					</p>
-					<p class="description">
-					The G4 tenant whose users should have access to this site.
-					</p>
-				</td>
-			</tr>
-			<tr valign="top">
-				<th scope="row">G4 Administrators</th>
-				<td>
-					<input type="text" name="g4_admins"
-						value="<?php echo esc_attr(get_option('g4_admins')); ?>"
-						class="regular-text" />
-					<p class="description"><b>Optional.</b></p>
-					<p class="description">
-					Comma-separated list of G4 users who will be given WordPress <b>Administrator</b> access.
-					</p>
-				</td>
-			</tr>
-			<tr valign="top">
-			<th scope="row">Map G4 Roles</th>
-				<td>
-					<input type="text" name="roles_scope"
-						value="<?php echo esc_attr(get_option('roles_scope')); ?>"
-						class="regular-text" />
-					<p class="description"><b>Optional.</b></p>
-					<p class="description">
-					Map G4 roles in this scope to WordPress roles.
-					</p>
-				</td>
-			</tr>
-			<tr valign="top">
-			<th scope="row">Notes</th>
-			<td>
-				<p class="description">
-					The data flow is strictly one way.
-				</p>
-				<p class="description">
-					When a user is authenticated, the local user record is updated
-					with that user's information or	a new user record is created if necessary.
-				</p>
-				<p class="description">
-					We do this because a lot of WordPress functionality depends on having
-					user records in its database.
-				</p>
-				<p class="description">
-					Also, if there is a problem with G4 Authentication,
-					you can deactivate the plugin and users will still be able to
-					authenticate using up-to-date credentials.
-				</p>
-				<p class="description">
-					However, if a user changes their password on the WordPress site,
-					that change will not get pushed back to G4 and
-					the user will still have to use their old password.
-				</p>
-				<p class="description">
-					Password changes have to be made in G4. This is the case even when the
-					plugin is active.
-				</p>
-			</td>
-			</tr>
-		</table>
-		<?php submit_button(); ?>
-
-		<?php if (isset($_GET['settings-updated'])) { ?>
-			<div id="message" class="notice notice-success is-dismissible">
-				<p><strong><?php _e('Settings saved.') ?></strong></p>
-			</div>
-		<?php } ?>
-
-
-	</form>
-	</div>
-<?php
 }
 
 ?>
