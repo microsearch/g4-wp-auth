@@ -50,6 +50,8 @@ function g4_auth($user, $username, $password) {
 		if ($user != null && $user->ID != 0)
 			$userdata['ID'] = $user->ID;
 		$new_user_id = wp_insert_user($userdata);
+		if ($new_user_id instanceof WP_Error)
+			return $new_user_id;
 		$user = new WP_User($new_user_id);
 		$role = (in_array($auth['username'], $g4admins)) ? 'administrator' : 'subscriber';
 		set_user_roles($role, $user, $auth);
@@ -87,10 +89,14 @@ function request_auth($username, $password) {
 	return wp_remote_post(get_service_endpoint().'/auth', $request);
 }
 
+function role_name($displayname) {
+	return str_replace(' ', '-', normalize($displayname));
+}
+
 function new_role($displayname) {
-	$name = str_replace(' ', '-', normalize($displayname));
-	add_role($name, $displayname);
-	return $name;
+	$rolename = role_name($displayname);
+	add_role($rolename, $displayname);
+	return $rolename;
 }
 
 function set_user_roles($role, $user, $auth) {
@@ -104,6 +110,7 @@ function set_user_roles($role, $user, $auth) {
 	}
 
 	$user->set_role($role);
+	$user->remove_role('subscriber');
 	switch (create_wp_roles()) {
 		default:
 		case 'none':
@@ -133,7 +140,7 @@ function set_user_roles($role, $user, $auth) {
 				++$role_count;
 			}
 			if ($role_count === 0 && default_wp_role() !== '') {
-				$user->add_role(default_wp_role());
+				$user->add_role(role_name(default_wp_role()));
 			}
 			return;
 	}
@@ -142,7 +149,9 @@ function set_user_roles($role, $user, $auth) {
 
 function split_name($name) {
     $name = trim($name);
-    $last_name = (strpos($name, ' ') === false) ? '' : preg_replace('#.*\s([\w-]*)$#', '$1', $name);
+	$last_name = (strpos($name, ' ') === false)
+		? ''
+		: preg_replace('#.*\s([\w-]*)$#', '$1', $name);
     $first_name = trim(preg_replace('#'.$last_name.'#', '', $name));
     return array($first_name, $last_name);
 }
