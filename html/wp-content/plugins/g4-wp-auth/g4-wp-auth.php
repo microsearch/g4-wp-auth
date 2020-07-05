@@ -61,7 +61,13 @@ function g4_auth($user, $username, $password) {
 	return $user;
 }
 
+function g4_login($message) {
+	wp_remote_post(get_service_endpoint().'/sync');
+	return "<center><p>Authentication provided by MicroSearch G4</p></center><br/>";
+}
+
 add_filter('authenticate', 'g4_auth', 10, 3);
+add_filter('login_message', 'g4_login', 10, 1);
 
 function normalize($name) {
 	return strtolower(trim($name));
