@@ -39,7 +39,8 @@ function create_wp_roles() {
 }
 
 function get_service_endpoint() {
-    return trim(get_option('service_endpoint'));
+    $ep = trim(get_option('service_endpoint', ''));
+    return $ep == '' ? 'https://g4-prod.v1.mrcapi.net' : $ep;
 }
 
 function default_wp_role() {
@@ -82,12 +83,11 @@ function g4_plugin_settings_page() {
                     <input type="url" name="service_endpoint"
                         value="<?php echo esc_attr(get_service_endpoint()); ?>"
                         class="regular-text code" />
-                    <p class="description"><b>Required.</b>
-                    G4 Authentication will fail without this.
+                    <p class="description"><b>Optional.</b>
+                    Defaults to <b>https://g4-prod.v1.mrcapi.net</b>
                     </p>
                     <p class="description">
-                        The URL of the G4 API.
-                        This should be normally set to <b>https://g4-prod.v1.mrcapi.net</b>.
+                        The URL for the G4 API end point.
                     </p>
                 </td>
             </tr>
