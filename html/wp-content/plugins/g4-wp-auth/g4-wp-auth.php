@@ -7,6 +7,7 @@
 **/
 
 include 'g4-plugin-settings.php';
+include 'g4-no-email-login.php';
 
 function g4_auth($user, $username, $password) {
     $admin = normalize(get_option('local_admin'));
