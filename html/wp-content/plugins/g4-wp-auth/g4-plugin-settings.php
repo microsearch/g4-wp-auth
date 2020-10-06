@@ -22,7 +22,7 @@ function register_g4_plugin_settings() {
         'default' => NULL
     ));
     register_setting('g4-plugin-settings-group', 'create_wp_roles');
-    register_setting('g4-plugin-settings-group', 'roles_scope', array(
+    register_setting('g4-plugin-settings-group', 'g4_role_scopes', array(
         'type' => 'string',
         'sanitize_callback' => 'sanitize_text_field',
         'default' => 'g4'
@@ -134,14 +134,16 @@ function g4_plugin_settings_page() {
                 </td>
             </tr>
             <tr valign="top">
-                <th scope="row">G4 Roles Scope</th>
+                <th scope="row">G4 Role Scopes</th>
                 <td>
-                    <input type="text" name="roles_scope"
-                        value="<?php echo esc_attr(get_option('roles_scope')); ?>"
+                    <input type="text" name="g4_role_scopes"
+                        value="<?php echo esc_attr(get_option('g4_role_scopes')); ?>"
                         class="regular-text" />
                     <p class="description"><b>Required only if "Map G4 roles to WordPress roles" is selected above.</b></p>
                     <p class="description">
-                    Scope of G4 roles to use for WordPress roles.
+                    Comma-separated list of G4 role scopes to use for WordPress roles.
+                    The first role in the first scope which contains a role that
+                    the user is a member of will be mapped to a WordPress role.
                     </p>
                 </td>
             </tr>

@@ -123,19 +123,21 @@ function set_user_roles($role, $user, $auth) {
         case 'none':
             return;
         case 'role_scope':
-            $roles_scope = normalize(get_option('roles_scope'));
-            $role_count = 0;
-            foreach ($rolenames as $scoped_name) {
-                $len = strlen($roles_scope);
-                if ($len > 0) {
-                    if (substr($scoped_name, 0, $len + 1) === $roles_scope . ":") {
-                        $name = substr($scoped_name, $len + 1);
-                        $user->add_role(new_role($name));
-                        ++$role_count;
+            $g4_role_scopes = array_map('normalize',
+                explode(",", get_option('g4_role_scopes')));
+            foreach ($g4_role_scopes as $role_scope) {
+                foreach ($rolenames as $scoped_name) {
+                    $len = strlen($role_scope);
+                    if ($len > 0) {
+                        if (substr($scoped_name, 0, $len + 1) === $role_scope . ":") {
+                            $name = substr($scoped_name, $len + 1);
+                            $user->add_role(new_role($name));
+                            return;
+                        }
                     }
                 }
             }
-            if ($role_count === 0 && default_wp_role() !== '') {
+            if (default_wp_role() !== '') {
                 $user->add_role(default_wp_role());
             }
             return;
