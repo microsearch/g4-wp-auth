@@ -6,10 +6,27 @@
 * Author: Ferruccio Barletta
 **/
 
+// uncomment to enable debugging output
+// define('WP_DEBUG', true);
+// define('WP_DEBUG_LOG', true);
+// define('SCRIPT_DEBUG', true);
+// define('SAVEQUERIES', true);
+
+// if (!function_exists('write_log')) {
+//     function write_log($log)  {
+//         if (is_array($log) || is_object($log)) {
+//             error_log(print_r($log, true));
+//         } else {
+//             error_log($log);
+//         }
+//     }
+// }
+
 include 'g4-plugin-settings.php';
 include 'g4-no-email-login.php';
 
 function g4_auth($user, $username, $password) {
+    $wpdb = $GLOBALS['wpdb'];
     $admin = normalize(get_option('local_admin'));
     if ($username == '' || $password == '' || normalize($username) == $admin) return;
     $admin = normalize(get_option('local_admin'));
@@ -36,13 +53,13 @@ function g4_auth($user, $username, $password) {
     if ($auth['accessAllowed'] == 0) {
         $user = new WP_Error('denied', __("ERROR: Invalid username or password"));
     } else {
-        $userobj = new WP_User();
-        $user = $userobj->get_data_by('login', $auth['username']);
+        $auth_username = $auth['username'];
+        $user = WP_User::get_data_by('login', $auth_username);
         $name = split_name($auth['fullname']);
         $userdata = [
             'user_pass' => $password,
-            'user_login' => $auth['username'],
-            'user_nicename' => $auth['username'],
+            'user_login' => $auth_username,
+            'user_nicename' => $auth_username,
             'user_email' => $auth['email'],
             'display_name' => $auth['fullname'],
             'first_name' => $name[0],
@@ -50,12 +67,22 @@ function g4_auth($user, $username, $password) {
         ];
         if ($user != null && $user->ID != 0)
             $userdata['ID'] = $user->ID;
-        $new_user_id = wp_insert_user($userdata);
-        if ($new_user_id instanceof WP_Error)
-            return $new_user_id;
-        $user = new WP_User($new_user_id);
-        $role = (in_array($auth['username'], $g4admins)) ? 'administrator' : 'subscriber';
-        set_user_roles($role, $user, $auth);
+        $existing_user = get_user_by('email', $auth['email']);
+        if ($existing_user && $existing_user->user_login != $auth_username) {
+            $result = $wpdb->update($wpdb->users,
+                array('user_login' => $auth_username, 'user_nicename' => $auth_username),
+                array('ID' => $existing_user->ID));
+            $user =  new WP_Error('denied', __(
+                "Your WordPress credentials have been updated to match your G4 credentials." .
+                "<hr>Please enter your credentials once more to complete the login process."));
+        } else {
+            $new_user_id = wp_insert_user($userdata);
+            if ($new_user_id instanceof WP_Error)
+                return $new_user_id;
+            $user = new WP_User($new_user_id);
+            $role = (in_array($auth_username, $g4admins)) ? 'administrator' : 'subscriber';
+            set_user_roles($role, $user, $auth);
+        }
     }
 
     remove_action('authenticate', 'wp_authenticate_username_password', 20);
