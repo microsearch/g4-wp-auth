@@ -53,6 +53,13 @@ function g4_auth($user, $username, $password) {
     if ($auth['accessAllowed'] == 0) {
         $user = new WP_Error('denied', __("ERROR: Invalid username or password"));
     } else {
+        $session_id = $auth['sessionId'];
+        setcookie('G4_SESSION_ID', $session_id, [
+            'path' => '/',
+            'expires' => 0,
+            'secure' => true,
+            'samesite' => 'none'
+        ]);
         $auth_username = $auth['username'];
         $user = WP_User::get_data_by('login', $auth_username);
         $name = split_name($auth['fullname']);
@@ -114,13 +121,14 @@ function request_auth($username, $password) {
         'body' => json_encode([
             'username' => $username,
             'password' => $password,
+            'timeout' => 60,
             'detail'=> [
                 'remote-addr' => $_SERVER['REMOTE_ADDR']
             ]
         ]),
         'data_format' => 'body'
     ];
-    return wp_remote_post(get_service_endpoint().'/auth', $request);
+    return wp_remote_post(get_service_endpoint().'/session', $request);
 }
 
 function role_name($displayname) {
@@ -199,5 +207,11 @@ function g4_plugin_create_menu() {
         __FILE__, 'g4_plugin_settings_page');
     add_action('admin_init', 'register_g4_plugin_settings');
 }
+
+function g4_logout() {
+    setcookie('G4_SESSION_ID', '', time() - 3600);
+}
+
+add_action('wp_logout', 'g4_logout');
 
 ?>
